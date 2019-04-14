@@ -92,6 +92,20 @@ uint16_t fpm_uart_avail( void ) {
   }
 }
 
+// FPM library helper methods.
+// Return an available ID slot to store a new fingerprint in.
+// Return -1 if no slots are available.
+int get_free_fprint_id( void ) {
+  int16_t fid;
+  for ( int page = 0; page < ( fprint_params.capacity / FPM_TEMPLATES_PER_PAGE ) + 1; ++page ) {
+    if ( fpm_get_free_index( &fprint, page, &fid ) == FPM_OK ) {
+      if ( fid != FPM_NOFREEINDEX ) { return fid; }
+    }
+    else { return -1; }
+  }
+  return -1;
+}
+
 /**
  * Main program.
  */
