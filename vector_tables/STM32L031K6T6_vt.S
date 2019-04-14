@@ -2,8 +2,6 @@
  * Test program to boot an STM32 chip with the absolute
  * minimum required code for teaching about the chips.
  *
- * Copyright William Ransohoff, Vivonomicon, LLC, 2017
- *
  * Open source under the MIT License
  */
 
