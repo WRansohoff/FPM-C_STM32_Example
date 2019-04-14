@@ -19,6 +19,8 @@
   #include "stm32l4xx_hal_conf.h"
 #endif
 
+#include "fpm.h"
+
 // Global defines.
 #ifdef VVC_F1
   #define Po_LED   (GPIOC)
@@ -27,21 +29,25 @@
   #define Po_LED   (GPIOB)
   #define Pi_LED   (3)
   #define Po_U1RX  (GPIOA)
-  #define Pi_U1RX  (9)
+  #define Pi_U1RX  (10)
   #define AF_U1RX  (7)
   #define Po_U1TX  (GPIOA)
-  #define Pi_U1TX  (10)
+  #define Pi_U1TX  (9)
   #define AF_U1TX  (7)
-  #define Po_U2RX  (GPIOA)
-  #define Pi_U2RX  (2)
-  #define AF_U2RX  (7)
   #define Po_U2TX  (GPIOA)
-  #define Pi_U2TX  (15)
+  #define Pi_U2TX  (2)
   #define AF_U2TX  (7)
+  #define Po_U2RX  (GPIOA)
+  #define Pi_U2RX  (15)
+  #define AF_U2RX  (3)
 #endif
 
 // Global variables.
 extern uint32_t SystemCoreClock;
 extern volatile uint32_t millis;
+
+// Fingerprint reader values.
+FPM fprint;
+FPM_System_Params fprint_params;
 
 #endif

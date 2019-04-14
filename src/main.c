@@ -53,37 +53,37 @@ void uart_tx_str( USART_TypeDef *u, const unsigned char *str, int len ) {
 
 // FPM-C driver methods.
 // Return the number of milliseconds elapsed since last reset.
-uint32_t fpm_millis_func( void ) {
+uint32_t fpm_millis( void ) {
   return millis;
 }
 
 // Delay for a given number of milliseconds.
-void fpm_delay_func( uint32_t ms_delay ) {
+void fpm_delay( uint32_t ms_delay ) {
   int next = millis + ms_delay;
-  while ( next < millis ) {};
+  while ( millis < next ) {};
 }
 
 // Receive a number of bytes over UART.
-uint16_t fpm_uart_read_func( uint8_t *bytes, uint16_t len ) {
-  int read;
+uint16_t fpm_uart_read( uint8_t *bytes, uint16_t len ) {
+  int read = 0;
   for ( read = 0; read < len; ++read ) {
+    if ( fprint_rb.pos == fprint_rb.ext ) { break; }
     bytes[ read ] = fprint_rb.buf[ fprint_rb.pos ];
     int next_pos = fprint_rb.pos + 1;
     if ( next_pos >= RINGBUF_LEN ) { next_pos = 0; }
     fprint_rb.pos = next_pos;
-    if ( fprint_rb.pos == fprint_rb.ext ) { break; }
   }
   // Return the number of bytes actually read.
   return read;
 }
 
 // Transmit a stream of bytes over UART.
-void fmp_uart_write_func( uint8_t *bytes, uint16_t len ) {
+void fpm_uart_write( uint8_t *bytes, uint16_t len ) {
   uart_tx_str( USART1, bytes, len );
 }
 
 // Return the number of bytes available in the UART buffer.
-uint16_t fpm_uart_avail_func( void ) {
+uint16_t fpm_uart_avail( void ) {
   if ( fprint_rb.ext >= fprint_rb.pos ) {
     return ( fprint_rb.ext - fprint_rb.pos );
   }
@@ -105,7 +105,12 @@ int main(void) {
   // Enable SysTick interrupt for 1ms ticks.
   SysTick_Config( SystemCoreClock / 1000 );
 
-  // Enable the GPIOA and GPIOB peripherals.
+  // Enable peripherals. TODO: HAL init?
+  //__HAL_RCC_GPIOA_CLK_ENABLE();
+  //__HAL_RCC_GPIOB_CLK_ENABLE();
+  //__HAL_RCC_GPIOC_CLK_ENABLE();
+  //__HAL_RCC_USART1_CLK_ENABLE();
+  //__HAL_RCC_USART2_CLK_ENABLE();
   #ifdef VVC_F0
     RCC->AHBENR   |= RCC_AHBENR_GPIOAEN;
     RCC->AHBENR   |= RCC_AHBENR_GPIOBEN;
@@ -156,7 +161,7 @@ int main(void) {
   #if !defined( STM32F1 )
     gpio_i.Alternate = AF_U2TX;
   #endif
-  HAL_GPIO_Init( Po_U1TX, &gpio_i );
+  HAL_GPIO_Init( Po_U2TX, &gpio_i );
   gpio_i.Pin = ( 1 << Pi_U1RX );
   #if !defined( STM32F1 )
     gpio_i.Alternate = AF_U1RX;
@@ -179,49 +184,63 @@ int main(void) {
   #endif
   USART2->CR1 |= ( USART_CR1_UE |
                    USART_CR1_RE |
-                 #if defined( STM32G0 )
-                   USART_CR1_RXNEIE_RXFNEIE |
-                 #else
                    USART_CR1_RXNEIE |
-                 #endif
                    USART_CR1_TE );
   USART1->CR1 |= ( USART_CR1_UE |
                    USART_CR1_RE |
-                 #if defined( STM32G0 )
-                   USART_CR1_RXNEIE_RXFNEIE |
-                 #else
                    USART_CR1_RXNEIE |
-                 #endif
                    USART_CR1_TE );
 
   // Setup interrupts.
-  #if   defined( ARM_CM4F ) || defined( ARM_CM3 )
+  __enable_irq();
+  #if   defined( STM32L4 ) || defined( STM32F1 )
     NVIC_SetPriorityGrouping( 0 );
     uint32_t pri_enc = NVIC_EncodePriority( 0, 1, 0 );
     NVIC_SetPriority( USART1_IRQn, pri_enc );
     NVIC_EnableIRQ( USART1_IRQn );
     NVIC_SetPriority( USART2_IRQn, pri_enc );
     NVIC_EnableIRQ( USART2_IRQn );
-  #elif defined( ARM_CM0PLUS )
+  #else
     NVIC_SetPriority( USART1_IRQn, 1 );
     NVIC_EnableIRQ( USART1_IRQn );
     NVIC_SetPriority( USART2_IRQn, 1 );
     NVIC_EnableIRQ( USART2_IRQn );
   #endif
 
-  // Print a test string to the 'prompt' USART.
-  const char *msg = "test\r\n";
-  uart_tx_str( USART2, ( uint8_t* )msg, strlen( msg ) );
-
+  // Test UART prompt output and define an output buffer.
+  // TODO: Use constant for length.
   char prompt_buf[ 256 ];
   snprintf( prompt_buf, 256, "Ticks: %ld\r\n", millis );
   uart_tx_str( USART2, ( uint8_t* )prompt_buf, strlen( prompt_buf ) );
+
+  // Initialize fingerprint reader values.
+  fprint.address = 0xFFFFFFFF;
+  fprint.password = 0;
+  fprint.avail_func = fpm_uart_avail;
+  fprint.read_func = fpm_uart_read;
+  fprint.write_func = fpm_uart_write;
+  int rcode = fpm_begin( &fprint, fpm_millis, fpm_delay );
+  if ( rcode == 1 ) {
+    fpm_read_params( &fprint, &fprint_params );
+    snprintf( prompt_buf, 256, "Found fingerprint sensor!\r\n" );
+    uart_tx_str( USART2, ( uint8_t* )prompt_buf, strlen( prompt_buf ) );
+    snprintf( prompt_buf, 256, "Capacity: %d\r\n", fprint_params.capacity );
+    uart_tx_str( USART2, ( uint8_t* )prompt_buf, strlen( prompt_buf ) );
+    snprintf( prompt_buf, 256, "Packet length: %d\r\n", fpm_packet_lengths[ fprint_params.packet_len ] );
+    uart_tx_str( USART2, ( uint8_t* )prompt_buf, strlen( prompt_buf ) );
+  }
+  else {
+    snprintf( prompt_buf, 256, "Could not find a fingerprint sensor :(\r\nCode: %d\r\n", rcode );
+    uart_tx_str( USART2, ( uint8_t* )prompt_buf, strlen( prompt_buf ) );
+  }
+
+  // Blink LED and print how many ms have elapsed since boot as a test.
   // Main loop.
   while (1) {
     delay_cycles(2000000);
     Po_LED->ODR ^=  (1 << Pi_LED);
-    snprintf( prompt_buf, 256, "Ticks: %ld\r\n", millis );
-    uart_tx_str( USART2, ( uint8_t* )prompt_buf, strlen( prompt_buf ) );
+    //snprintf( prompt_buf, 256, "Ticks: %ld\r\n", millis );
+    //uart_tx_str( USART2, ( uint8_t* )prompt_buf, strlen( prompt_buf ) );
   }
 }
 
@@ -232,36 +251,37 @@ void SysTick_handler( void ) {
 
 // USART interrupt handlers.
 void USART1_IRQ_handler( void ) {
-  #if defined( STM32F1 ) || defined( STM32F4 )
+  #if defined( STM32F1 )
     if ( USART1->SR & USART_SR_RXNE ) {
       int next_pos = fprint_rb.ext + 1;
       if ( next_pos >= RINGBUF_LEN ) { next_pos = 0; }
-      fprint_rb.buf[ next_pos ] = USART1->DR;
+      fprint_rb.buf[ fprint_rb.ext ] = USART1->DR;
       fprint_rb.ext = next_pos;
     }
   #else
     if ( USART1->ISR & USART_ISR_RXNE ) {
       int next_pos = fprint_rb.ext + 1;
       if ( next_pos >= RINGBUF_LEN ) { next_pos = 0; }
-      fprint_rb.buf[ next_pos ] = USART1->RDR;
+      fprint_rb.buf[ fprint_rb.ext ] = USART1->RDR;
       fprint_rb.ext = next_pos;
+      uart_tx_str( USART2, ( uint8_t* )&fprint_rb.buf[ next_pos ], 1 );
     }
   #endif
 }
 
 void USART2_IRQ_handler( void ) {
-  #if defined( STM32F1 ) || defined( STM32F4 )
+  #if defined( STM32F1 )
     if ( USART2->SR & USART_SR_RXNE ) {
       int next_pos = prompt_rb.ext + 1;
       if ( next_pos >= RINGBUF_LEN ) { next_pos = 0; }
-      prompt_rb.buf[ next_pos ] = USART2->DR;
+      prompt_rb.buf[ prompt_rb.ext ] = USART2->DR;
       prompt_rb.ext = next_pos;
     }
   #else
     if ( USART2->ISR & USART_ISR_RXNE ) {
       int next_pos = prompt_rb.ext + 1;
       if ( next_pos >= RINGBUF_LEN ) { next_pos = 0; }
-      prompt_rb.buf[ next_pos ] = USART2->RDR;
+      prompt_rb.buf[ prompt_rb.ext ] = USART2->RDR;
       prompt_rb.ext = next_pos;
     }
   #endif
