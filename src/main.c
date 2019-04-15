@@ -106,6 +106,75 @@ int get_free_fprint_id( void ) {
   return -1;
 }
 
+// Test 'enroll fingerprint' loop. Look for a fingerprint,
+// Ask the user to remove it and place it again, then see if
+// they match or print an error code.
+void test_fingerprint_enroll( void ) {
+  int16_t rcode = -1;
+  char msg_buf[ 64 ];
+  snprintf( msg_buf, 64, "Place finger on reader.\r\n" );
+  uart_tx_str( USART2, ( uint8_t* )msg_buf, strlen( msg_buf ) );
+  while ( rcode != FPM_OK ) {
+    rcode = fpm_get_image( &fprint );
+    if ( rcode == FPM_NOFINGER ) {
+      msg_buf[ 0 ] = '.';
+      uart_tx_str( USART2, ( uint8_t* )msg_buf, 1 );
+      fpm_delay( 10 );
+    }
+    else if ( rcode == FPM_OK ) {
+      snprintf( msg_buf, 64, "\r\nImage taken; remove finger.\r\n" );
+      uart_tx_str( USART2, ( uint8_t* )msg_buf, strlen( msg_buf ) );
+    }
+    else {
+      snprintf( msg_buf, 64, "\r\nError 0x%02x\r\n", rcode );
+      uart_tx_str( USART2, ( uint8_t* )msg_buf, strlen( msg_buf ) );
+      return;
+    }
+  }
+  fpm_image2Tz( &fprint, 1 );
+
+  // Wait for the user to remove their finger.
+  fpm_delay( 2000 );
+  rcode = 0;
+  while ( rcode != FPM_NOFINGER ) {
+    rcode = fpm_get_image( &fprint );
+    fpm_delay( 10 );
+  }
+
+  rcode = -1;
+  snprintf( msg_buf, 64, "Place the same finger again.\r\n" );
+  uart_tx_str( USART2, ( uint8_t* )msg_buf, strlen( msg_buf ) );
+  while ( rcode != FPM_OK ) {
+    rcode = fpm_get_image( &fprint );
+    if ( rcode == FPM_NOFINGER ) {
+      msg_buf[ 0 ] = '.';
+      uart_tx_str( USART2, ( uint8_t* )msg_buf, 1 );
+      fpm_delay( 10 );
+    }
+    else if ( rcode == FPM_OK ) {
+      snprintf( msg_buf, 64, "\r\nImage taken.\r\n" );
+      uart_tx_str( USART2, ( uint8_t* )msg_buf, strlen( msg_buf ) );
+    }
+    else {
+      snprintf( msg_buf, 64, "\r\nError 0x%02x\r\n", rcode );
+      uart_tx_str( USART2, ( uint8_t* )msg_buf, strlen( msg_buf ) );
+      return;
+    }
+  }
+  fpm_image2Tz( &fprint, 2 );
+
+  // Create the new fingerprint model.
+  rcode = fpm_create_model( &fprint );
+  if ( rcode == FPM_OK ) {
+    snprintf( msg_buf, 64, "Prints matched!\r\n" );
+    uart_tx_str( USART2, ( uint8_t* )msg_buf, strlen( msg_buf ) );
+  }
+  else {
+    snprintf( msg_buf, 64, "Error 0x%02x\r\n", rcode );
+    uart_tx_str( USART2, ( uint8_t* )msg_buf, strlen( msg_buf ) );
+  }
+}
+
 /**
  * Main program.
  */
@@ -242,6 +311,7 @@ int main(void) {
     uart_tx_str( USART2, ( uint8_t* )prompt_buf, strlen( prompt_buf ) );
     snprintf( prompt_buf, 256, "Packet length: %d\r\n", fpm_packet_lengths[ fprint_params.packet_len ] );
     uart_tx_str( USART2, ( uint8_t* )prompt_buf, strlen( prompt_buf ) );
+    test_fingerprint_enroll();
   }
   else {
     snprintf( prompt_buf, 256, "Could not find a fingerprint sensor :(\r\nCode: %d\r\n", rcode );
@@ -278,7 +348,6 @@ void USART1_IRQ_handler( void ) {
       if ( next_pos >= RINGBUF_LEN ) { next_pos = 0; }
       fprint_rb.buf[ fprint_rb.ext ] = USART1->RDR;
       fprint_rb.ext = next_pos;
-      uart_tx_str( USART2, ( uint8_t* )&fprint_rb.buf[ next_pos ], 1 );
     }
   #endif
 }
