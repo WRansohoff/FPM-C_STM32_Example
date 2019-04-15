@@ -114,13 +114,3 @@ void clock_setup(void) {
     SystemCoreClock  = 72000000;
   #endif
 }
-
-// Simple delay method, with instructions not to optimize.
-// It doesn't accurately delay a precise # of cycles,
-// it's just a rough scale.
-void __attribute__((optimize("O0"))) delay_cycles(uint32_t cyc) {
-  uint32_t d_i;
-  for (d_i = 0; d_i < cyc; ++d_i) {
-    asm("NOP");
-  }
-}

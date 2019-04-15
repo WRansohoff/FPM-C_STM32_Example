@@ -311,20 +311,20 @@ int main(void) {
     uart_tx_str( USART2, ( uint8_t* )prompt_buf, strlen( prompt_buf ) );
     snprintf( prompt_buf, 256, "Packet length: %d\r\n", fpm_packet_lengths[ fprint_params.packet_len ] );
     uart_tx_str( USART2, ( uint8_t* )prompt_buf, strlen( prompt_buf ) );
-    test_fingerprint_enroll();
   }
   else {
     snprintf( prompt_buf, 256, "Could not find a fingerprint sensor :(\r\nCode: %d\r\n", rcode );
     uart_tx_str( USART2, ( uint8_t* )prompt_buf, strlen( prompt_buf ) );
   }
 
-  // Blink LED and print how many ms have elapsed since boot as a test.
   // Main loop.
   while (1) {
-    delay_cycles(2000000);
-    Po_LED->ODR ^=  (1 << Pi_LED);
-    //snprintf( prompt_buf, 256, "Ticks: %ld\r\n", millis );
-    //uart_tx_str( USART2, ( uint8_t* )prompt_buf, strlen( prompt_buf ) );
+    // Blink the LED
+    fpm_delay( 500 );
+    Po_LED->ODR ^=  ( 1 << Pi_LED );
+    // TODO: Interactive prompt.
+    // Just loop the 'test fingerprint enrollment' method for now.
+    test_fingerprint_enroll();
   }
 }
 
