@@ -122,6 +122,7 @@ C_SRC    =  ./src/main.c
 C_SRC    += ./src/util.c
 C_SRC    += ./src/interrupts.c
 C_SRC    += ./src/uart.c
+C_SRC    += ./src/fpm_driver.c
 C_SRC    += ./lib/fpm.c
 # TODO: Other chip types.
 C_SRC    += ./hal/L4/system_stm32l4xx.c

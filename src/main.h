@@ -4,5 +4,6 @@
 #include "global.h"
 #include "util.h"
 #include "uart.h"
+#include "fpm_driver.h"
 
 #endif
