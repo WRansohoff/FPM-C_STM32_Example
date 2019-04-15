@@ -5,6 +5,5 @@
 
 /* Utility method declarations. */
 void clock_setup(void);
-void delay_cycles(uint32_t cyc);
 
 #endif

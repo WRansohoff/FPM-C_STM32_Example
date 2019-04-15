@@ -3,54 +3,6 @@
 // Core value initializations.
 volatile uint32_t millis = 0;
 
-// Stub '_sbrk' method.
-register char* stack_ptr asm( "sp" );
-void* _sbrk( int incr )
-{
-  extern char end asm("end");
-  static char *heap_end;
-  char *prev_heap_end;
-
-  if ( heap_end == 0 ) { heap_end = &end; }
-
-  prev_heap_end = heap_end;
-  if ( heap_end + incr > stack_ptr ) {
-    errno = ENOMEM;
-    return ( void* )-1;
-  }
-
-  heap_end += incr;
-
-  return ( void* )prev_heap_end;
-}
-
-// Simple ring buffer.
-#define RINGBUF_LEN ( 256 )
-typedef struct {
-  volatile char buf[ RINGBUF_LEN ];
-  volatile int  pos;
-  volatile int  ext;
-} ring_buf;
-static ring_buf prompt_rb;
-static ring_buf fprint_rb;
-
-// TODO: Move these into separate files.
-// UART helper methods.
-void uart_tx_str( USART_TypeDef *u, const unsigned char *str, int len ) {
-  while ( len-- ) {
-    #if   defined( STM32L4 )
-      while ( ( u->ISR & USART_ISR_TXE ) == 0 ) {};
-      u->TDR = *str++;
-    #elif defined( STM32F4 ) || defined( STM32F1 )
-      while ( ( u->SR & USART_SR_TXE ) == 0 ) {};
-      u->DR = *str++;
-    #elif defined( STM32G0 )
-      while ( ( u->ISR & USART_ISR_TXE_TXFNF ) == 0 ) {};
-      u->TDR = *str++;
-    #endif
-  }
-}
-
 // FPM-C driver methods.
 // Return the number of milliseconds elapsed since last reset.
 uint32_t fpm_millis( void ) {
@@ -226,69 +178,8 @@ int main(void) {
   };
   HAL_GPIO_Init( Po_LED, &gpio_i );
 
-  // Initialize ringbuffer structs.
-  prompt_rb.pos = 0;
-  prompt_rb.ext = 0;
-  fprint_rb.pos = 0;
-  fprint_rb.ext = 0;
-
-  // Setup USART1/2 pins.
-  gpio_i.Pin = ( 1 << Pi_U1TX );
-  gpio_i.Mode = GPIO_MODE_AF_PP;
-  gpio_i.Speed = GPIO_SPEED_FREQ_HIGH;
-  #if !defined( STM32F1 )
-    gpio_i.Alternate = AF_U1TX;
-  #endif
-  HAL_GPIO_Init( Po_U1TX, &gpio_i );
-  gpio_i.Pin = ( 1 << Pi_U2TX );
-  #if !defined( STM32F1 )
-    gpio_i.Alternate = AF_U2TX;
-  #endif
-  HAL_GPIO_Init( Po_U2TX, &gpio_i );
-  gpio_i.Pin = ( 1 << Pi_U1RX );
-  #if !defined( STM32F1 )
-    gpio_i.Alternate = AF_U1RX;
-  #else
-    gpio_i.Mode = GPIO_MODE_INPUT;
-  #endif
-  HAL_GPIO_Init( Po_U1RX, &gpio_i );
-  gpio_i.Pin = ( 1 << Pi_U2RX );
-  #if !defined( STM32F1 )
-    gpio_i.Alternate = AF_U2RX;
-  #endif
-  HAL_GPIO_Init( Po_U2RX, &gpio_i );
-
-  // Setup USART1/2.
-  #if defined( STM32F1 )
-    // ???
-  #else
-    USART2->BRR  =  ( SystemCoreClock / 115200 );
-    USART1->BRR  =  ( SystemCoreClock / 57600 );
-  #endif
-  USART2->CR1 |= ( USART_CR1_UE |
-                   USART_CR1_RE |
-                   USART_CR1_RXNEIE |
-                   USART_CR1_TE );
-  USART1->CR1 |= ( USART_CR1_UE |
-                   USART_CR1_RE |
-                   USART_CR1_RXNEIE |
-                   USART_CR1_TE );
-
-  // Setup interrupts.
-  __enable_irq();
-  #if   defined( STM32L4 ) || defined( STM32F1 )
-    NVIC_SetPriorityGrouping( 0 );
-    uint32_t pri_enc = NVIC_EncodePriority( 0, 1, 0 );
-    NVIC_SetPriority( USART1_IRQn, pri_enc );
-    NVIC_EnableIRQ( USART1_IRQn );
-    NVIC_SetPriority( USART2_IRQn, pri_enc );
-    NVIC_EnableIRQ( USART2_IRQn );
-  #else
-    NVIC_SetPriority( USART1_IRQn, 1 );
-    NVIC_EnableIRQ( USART1_IRQn );
-    NVIC_SetPriority( USART2_IRQn, 1 );
-    NVIC_EnableIRQ( USART2_IRQn );
-  #endif
+  // Set UART pins and peripherals.
+  uarts_init();
 
   // Test UART prompt output and define an output buffer.
   // TODO: Use constant for length.
@@ -326,46 +217,4 @@ int main(void) {
     // Just loop the 'test fingerprint enrollment' method for now.
     test_fingerprint_enroll();
   }
-}
-
-// SysTick interrupt handler.
-void SysTick_handler( void ) {
-  ++millis;
-}
-
-// USART interrupt handlers.
-void USART1_IRQ_handler( void ) {
-  #if defined( STM32F1 )
-    if ( USART1->SR & USART_SR_RXNE ) {
-      int next_pos = fprint_rb.ext + 1;
-      if ( next_pos >= RINGBUF_LEN ) { next_pos = 0; }
-      fprint_rb.buf[ fprint_rb.ext ] = USART1->DR;
-      fprint_rb.ext = next_pos;
-    }
-  #else
-    if ( USART1->ISR & USART_ISR_RXNE ) {
-      int next_pos = fprint_rb.ext + 1;
-      if ( next_pos >= RINGBUF_LEN ) { next_pos = 0; }
-      fprint_rb.buf[ fprint_rb.ext ] = USART1->RDR;
-      fprint_rb.ext = next_pos;
-    }
-  #endif
-}
-
-void USART2_IRQ_handler( void ) {
-  #if defined( STM32F1 )
-    if ( USART2->SR & USART_SR_RXNE ) {
-      int next_pos = prompt_rb.ext + 1;
-      if ( next_pos >= RINGBUF_LEN ) { next_pos = 0; }
-      prompt_rb.buf[ prompt_rb.ext ] = USART2->DR;
-      prompt_rb.ext = next_pos;
-    }
-  #else
-    if ( USART2->ISR & USART_ISR_RXNE ) {
-      int next_pos = prompt_rb.ext + 1;
-      if ( next_pos >= RINGBUF_LEN ) { next_pos = 0; }
-      prompt_rb.buf[ prompt_rb.ext ] = USART2->RDR;
-      prompt_rb.ext = next_pos;
-    }
-  #endif
 }

@@ -3,8 +3,6 @@
 
 #include "global.h"
 #include "util.h"
-
-void USART1_IRQ_handler( void );
-void USART2_IRQ_handler( void );
+#include "uart.h"
 
 #endif
