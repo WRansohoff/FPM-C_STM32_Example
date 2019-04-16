@@ -27,7 +27,7 @@ uint16_t fpm_uart_read( uint8_t *bytes, uint16_t len ) {
 
 // Transmit a stream of bytes over UART.
 void fpm_uart_write( uint8_t *bytes, uint16_t len ) {
-  uart_tx_str( USART1, bytes, len );
+  uart_tx_str( FPM_UART, bytes, len );
 }
 
 // Return the number of bytes available in the UART buffer.
@@ -60,21 +60,21 @@ void test_fingerprint_enroll( void ) {
   int16_t rcode = -1;
   char msg_buf[ 64 ];
   snprintf( msg_buf, 64, "Place finger on reader.\r\n" );
-  uart_tx_str( USART2, ( uint8_t* )msg_buf, strlen( msg_buf ) );
+  uart_tx_str( P_UART, ( uint8_t* )msg_buf, strlen( msg_buf ) );
   while ( rcode != FPM_OK ) {
     rcode = fpm_get_image( &fprint );
     if ( rcode == FPM_NOFINGER ) {
       msg_buf[ 0 ] = '.';
-      uart_tx_str( USART2, ( uint8_t* )msg_buf, 1 );
+      uart_tx_str( P_UART, ( uint8_t* )msg_buf, 1 );
       fpm_delay( 10 );
     }
     else if ( rcode == FPM_OK ) {
       snprintf( msg_buf, 64, "\r\nImage taken; remove finger.\r\n" );
-      uart_tx_str( USART2, ( uint8_t* )msg_buf, strlen( msg_buf ) );
+      uart_tx_str( P_UART, ( uint8_t* )msg_buf, strlen( msg_buf ) );
     }
     else {
       snprintf( msg_buf, 64, "\r\nError 0x%02x\r\n", rcode );
-      uart_tx_str( USART2, ( uint8_t* )msg_buf, strlen( msg_buf ) );
+      uart_tx_str( P_UART, ( uint8_t* )msg_buf, strlen( msg_buf ) );
       return;
     }
   }
@@ -90,21 +90,21 @@ void test_fingerprint_enroll( void ) {
 
   rcode = -1;
   snprintf( msg_buf, 64, "Place the same finger again.\r\n" );
-  uart_tx_str( USART2, ( uint8_t* )msg_buf, strlen( msg_buf ) );
+  uart_tx_str( P_UART, ( uint8_t* )msg_buf, strlen( msg_buf ) );
   while ( rcode != FPM_OK ) {
     rcode = fpm_get_image( &fprint );
     if ( rcode == FPM_NOFINGER ) {
       msg_buf[ 0 ] = '.';
-      uart_tx_str( USART2, ( uint8_t* )msg_buf, 1 );
+      uart_tx_str( P_UART, ( uint8_t* )msg_buf, 1 );
       fpm_delay( 10 );
     }
     else if ( rcode == FPM_OK ) {
       snprintf( msg_buf, 64, "\r\nImage taken.\r\n" );
-      uart_tx_str( USART2, ( uint8_t* )msg_buf, strlen( msg_buf ) );
+      uart_tx_str( P_UART, ( uint8_t* )msg_buf, strlen( msg_buf ) );
     }
     else {
       snprintf( msg_buf, 64, "\r\nError 0x%02x\r\n", rcode );
-      uart_tx_str( USART2, ( uint8_t* )msg_buf, strlen( msg_buf ) );
+      uart_tx_str( P_UART, ( uint8_t* )msg_buf, strlen( msg_buf ) );
       return;
     }
   }
@@ -114,10 +114,10 @@ void test_fingerprint_enroll( void ) {
   rcode = fpm_create_model( &fprint );
   if ( rcode == FPM_OK ) {
     snprintf( msg_buf, 64, "Prints matched!\r\n" );
-    uart_tx_str( USART2, ( uint8_t* )msg_buf, strlen( msg_buf ) );
+    uart_tx_str( P_UART, ( uint8_t* )msg_buf, strlen( msg_buf ) );
   }
   else {
     snprintf( msg_buf, 64, "Error 0x%02x\r\n", rcode );
-    uart_tx_str( USART2, ( uint8_t* )msg_buf, strlen( msg_buf ) );
+    uart_tx_str( P_UART, ( uint8_t* )msg_buf, strlen( msg_buf ) );
   }
 }

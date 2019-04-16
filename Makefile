@@ -3,11 +3,11 @@ TARGET = main
 # Default target chip.
 #MCU ?= STM32F030K6
 #MCU ?= STM32F031K6
-#MCU ?= STM32F103C8
+MCU ?= STM32F103C8
 #MCU ?= STM32L031K6
 #MCU ?= STM32L052K8
 #MCU ?= STM32L082KZ
-MCU ?= STM32L432KC
+#MCU ?= STM32L432KC
 
 ifeq ($(MCU), STM32F030K6)
 	MCU_FILES = STM32F030K6T6
@@ -125,19 +125,30 @@ C_SRC    += ./src/uart.c
 C_SRC    += ./src/fpm_driver.c
 C_SRC    += ./lib/fpm.c
 # TODO: Other chip types.
-C_SRC    += ./hal/L4/system_stm32l4xx.c
-C_SRC    += ./hal/L4/Src/stm32l4xx_hal.c
-C_SRC    += ./hal/L4/Src/stm32l4xx_hal_cortex.c
-C_SRC    += ./hal/L4/Src/stm32l4xx_hal_gpio.c
-C_SRC    += ./hal/L4/Src/stm32l4xx_hal_rcc.c
-C_SRC    += ./hal/L4/Src/stm32l4xx_hal_pwr.c
-C_SRC    += ./hal/L4/Src/stm32l4xx_hal_pwr_ex.c
+ifeq ($(MCU_CLASS), L4)
+	C_SRC    += ./hal/L4/system_stm32l4xx.c
+	C_SRC    += ./hal/L4/Src/stm32l4xx_hal.c
+	C_SRC    += ./hal/L4/Src/stm32l4xx_hal_cortex.c
+	C_SRC    += ./hal/L4/Src/stm32l4xx_hal_gpio.c
+	C_SRC    += ./hal/L4/Src/stm32l4xx_hal_rcc.c
+	C_SRC    += ./hal/L4/Src/stm32l4xx_hal_pwr.c
+	C_SRC    += ./hal/L4/Src/stm32l4xx_hal_pwr_ex.c
+	INCLUDE  += -I./hal/L4/Inc
+else ifeq ($(MCU_CLASS), F1)
+	C_SRC    += ./hal/F1/system_stm32f1xx.c
+	C_SRC    += ./hal/F1/Src/stm32f1xx_hal.c
+	C_SRC    += ./hal/F1/Src/stm32f1xx_hal_cortex.c
+	C_SRC    += ./hal/F1/Src/stm32f1xx_hal_gpio.c
+	C_SRC    += ./hal/F1/Src/stm32f1xx_hal_flash.c
+	C_SRC    += ./hal/F1/Src/stm32f1xx_hal_flash_ex.c
+	C_SRC    += ./hal/F1/Src/stm32f1xx_hal_rcc.c
+	C_SRC    += ./hal/F1/Src/stm32f1xx_hal_pwr.c
+	INCLUDE  += -I./hal/F1/Inc
+endif
 
-INCLUDE  =  -I./
+INCLUDE  += -I./
 INCLUDE  += -I./device_headers
 INCLUDE  += -I./lib
-# TODO: Other chip types.
-INCLUDE  += -I./hal/L4/Inc
 
 OBJS  = $(AS_SRC:.S=.o)
 OBJS += $(C_SRC:.c=.o)

@@ -25,6 +25,16 @@
 #ifdef VVC_F1
   #define Po_LED   (GPIOC)
   #define Pi_LED   (13)
+  #define Po_U1TX  (GPIOA)
+  #define Pi_U1TX  (9)
+  #define Po_U1RX  (GPIOA)
+  #define Pi_U1RX  (10)
+  #define Po_U2TX  (GPIOA)
+  #define Pi_U2TX  (2)
+  #define Po_U2RX  (GPIOA)
+  #define Pi_U2RX  (3)
+  #define FPM_UART (USART2)
+  #define P_UART   (USART1)
 #else
   #define Po_LED   (GPIOB)
   #define Pi_LED   (3)
@@ -40,6 +50,8 @@
   #define Po_U2RX  (GPIOA)
   #define Pi_U2RX  (15)
   #define AF_U2RX  (3)
+  #define FPM_UART (USART1)
+  #define P_UART   (USART2)
 #endif
 
 // Global variables.

@@ -40,21 +40,23 @@ void uarts_init() {
 
   // Setup USART1/2.
   #if defined( STM32F1 )
-    // ???
+    P_UART->BRR = UART_BRR_SAMPLING16( SystemCoreClock, 115200 );
+    FPM_UART->BRR = UART_BRR_SAMPLING16( SystemCoreClock, 57600 );
   #else
-    USART2->BRR  =  ( SystemCoreClock / 115200 );
-    USART1->BRR  =  ( SystemCoreClock / 57600 );
+    P_UART->BRR  =  ( SystemCoreClock / 115200 );
+    FPM_UART->BRR  =  ( SystemCoreClock / 57600 );
   #endif
-  USART2->CR1 |= ( USART_CR1_UE |
+  P_UART->CR1 |= ( USART_CR1_UE |
                    USART_CR1_RE |
                    USART_CR1_RXNEIE |
                    USART_CR1_TE );
-  USART1->CR1 |= ( USART_CR1_UE |
-                   USART_CR1_RE |
-                   USART_CR1_RXNEIE |
-                   USART_CR1_TE );
+  FPM_UART->CR1 |= ( USART_CR1_UE |
+                     USART_CR1_RE |
+                     USART_CR1_RXNEIE |
+                     USART_CR1_TE );
 
   // Setup interrupts.
+  // TODO: This assumes we use USART1/2.
   __enable_irq();
   #if   defined( STM32L4 ) || defined( STM32F1 )
     NVIC_SetPriorityGrouping( 0 );

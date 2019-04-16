@@ -16,31 +16,12 @@ int main(void) {
   // Enable SysTick interrupt for 1ms ticks.
   SysTick_Config( SystemCoreClock / 1000 );
 
-  // Enable peripherals. TODO: HAL init?
-  //__HAL_RCC_GPIOA_CLK_ENABLE();
-  //__HAL_RCC_GPIOB_CLK_ENABLE();
-  //__HAL_RCC_GPIOC_CLK_ENABLE();
-  //__HAL_RCC_USART1_CLK_ENABLE();
-  //__HAL_RCC_USART2_CLK_ENABLE();
-  #ifdef VVC_F0
-    RCC->AHBENR   |= RCC_AHBENR_GPIOAEN;
-    RCC->AHBENR   |= RCC_AHBENR_GPIOBEN;
-    RCC->AHBENR   |= RCC_AHBENR_GPIOCEN;
-  #elif  VVC_F1
-    RCC->APB2ENR |= RCC_APB2ENR_IOPAEN;
-    RCC->APB2ENR |= RCC_APB2ENR_IOPBEN;
-    RCC->APB2ENR |= RCC_APB2ENR_IOPCEN;
-  #elif  VVC_L0
-    RCC->IOPENR   |= RCC_IOPENR_IOPAEN;
-    RCC->IOPENR   |= RCC_IOPENR_IOPBEN;
-    RCC->IOPENR   |= RCC_IOPENR_IOPCEN;
-  #elif  VVC_L4
-    RCC->AHB2ENR  |= RCC_AHB2ENR_GPIOAEN;
-    RCC->AHB2ENR  |= RCC_AHB2ENR_GPIOBEN;
-    RCC->AHB2ENR  |= RCC_AHB2ENR_GPIOCEN;
-    RCC->APB2ENR  |= RCC_APB2ENR_USART1EN;
-    RCC->APB1ENR1 |= RCC_APB1ENR1_USART2EN;
-  #endif
+  // Enable peripherals.
+  __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
+  __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_USART1_CLK_ENABLE();
+  __HAL_RCC_USART2_CLK_ENABLE();
 
   // LED output type: Push-pull, low-speed.
   GPIO_InitTypeDef gpio_i = {
@@ -61,7 +42,7 @@ int main(void) {
   // TODO: Use constant for length.
   char prompt_buf[ 256 ];
   snprintf( prompt_buf, 256, "Ticks: %ld\r\n", millis );
-  uart_tx_str( USART2, ( uint8_t* )prompt_buf, strlen( prompt_buf ) );
+  uart_tx_str( P_UART, ( uint8_t* )prompt_buf, strlen( prompt_buf ) );
 
   // Initialize fingerprint reader values.
   fprint.address = 0xFFFFFFFF;
@@ -73,15 +54,15 @@ int main(void) {
   if ( rcode == 1 ) {
     fpm_read_params( &fprint, &fprint_params );
     snprintf( prompt_buf, 256, "Found fingerprint sensor!\r\n" );
-    uart_tx_str( USART2, ( uint8_t* )prompt_buf, strlen( prompt_buf ) );
+    uart_tx_str( P_UART, ( uint8_t* )prompt_buf, strlen( prompt_buf ) );
     snprintf( prompt_buf, 256, "Capacity: %d\r\n", fprint_params.capacity );
-    uart_tx_str( USART2, ( uint8_t* )prompt_buf, strlen( prompt_buf ) );
+    uart_tx_str( P_UART, ( uint8_t* )prompt_buf, strlen( prompt_buf ) );
     snprintf( prompt_buf, 256, "Packet length: %d\r\n", fpm_packet_lengths[ fprint_params.packet_len ] );
-    uart_tx_str( USART2, ( uint8_t* )prompt_buf, strlen( prompt_buf ) );
+    uart_tx_str( P_UART, ( uint8_t* )prompt_buf, strlen( prompt_buf ) );
   }
   else {
     snprintf( prompt_buf, 256, "Could not find a fingerprint sensor :(\r\nCode: %d\r\n", rcode );
-    uart_tx_str( USART2, ( uint8_t* )prompt_buf, strlen( prompt_buf ) );
+    uart_tx_str( P_UART, ( uint8_t* )prompt_buf, strlen( prompt_buf ) );
   }
 
   // Main loop.
